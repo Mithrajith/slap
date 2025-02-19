@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rejected Applications</title>
+    <link rel="stylesheet" href="statics/css/staff_css2.css">
+</head>
+<body>
+    <header class="header">
+        <h1>Rejected Leave Applications</h1>
+    </header>
+
+    <nav class="sidebar">
+        <div class="user-profile">
+            <div class="profile-pic">👤</div>
+            <span>Student</span>
+        </div>
+        <ul class="menu-list">
+            <li><a href="student_dash.html" >
+                <span class="menu-icon">🏠</span> Dashboard</a></li>
+            <li><a href="student_leave.html">
+                <span class="menu-icon">✍️</span> leave applications
+            </a></li>
+            <li><a href="student_result.html">
+                <span class="menu-icon">📊</span> Check Result</a></li>
+            <li><a href="login_student.html">
+                <span class="menu-icon">🚪</span> Logout
+            </a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <table id="applicationTable">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>Student Name</th>
+                    <th>Student ID</th>
+                    <th>From Date</th>
+                    <th>To Date</th>
+                    <th>Category</th>
+                    <th>Rejected By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Table will be populated by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- View Letter Modal -->
+    <div id="viewLetterModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeViewLetterModal()">&times;</span>
+            <div id="letterContent"></div>
+        </div>
+    </div>
+    <script>
+        let applications = [];
+
+        window.onload = async function() {
+            await loadRejectedApplications();
+            // Refresh every 30 seconds
+            setInterval(loadRejectedApplications, 30000);
+        };
+
+        async function loadRejectedApplications() {
+            try {
+                const response = await fetch('/api/get_rejected_applications');
+                if (!response.ok) throw new Error('Failed to fetch rejected applications');
+                
+                applications = await response.json();
+                populateRejectedTable();
+            } catch (error) {
+                console.error('Error loading rejected applications:', error);
+                showError('Failed to load rejected applications');
+            }
+        }
+
+        function populateRejectedTable() {
+            const tableBody = document.querySelector("#applicationTable tbody");
+            if (!tableBody) return;
+
+            if (!applications || applications.length === 0) {
+                tableBody.innerHTML = "<tr><td colspan='8' style='text-align: center;'>No rejected applications</td></tr>";
+                return;
+            }
+
+            tableBody.innerHTML = '';
+            applications.forEach(app => {
+                const row = `
+                    <tr>
+                        <td><img src="${app.photo || '/static/placeholder.jpg'}" alt="${app.name}" class="profile-img"></td>
+                        <td>${app.name}</td>
+                        <td>${app.studentId}</td>
+                        <td>${app.fromDate}</td>
+                        <td>${app.toDate}</td>
+                        <td>${app.category}</td>
+                        <td>${app.rejectedBy || 'Staff'}</td>
+                        <td>${app.rejectedAt ? new Date(app.rejectedAt).toLocaleString() : 'Not specified'}</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+
+        function viewDetails(id) {
+            const app = applications.find(a => a.id === id);
+            if (!app) {
+                alert('Application details not found.');
+                return;
+            }
+
+            const modalContent = `
+                <div class="application-details">
+                    <div class="student-info">
+                        <img src="${app.photo || '/static/placeholder.jpg'}" alt="${app.name}" class="student-photo">
+                        <div>
+                            <h2>${app.name}</h2>
+                            <p><strong>Student ID:</strong> ${app.studentId}</p>
+                            <p><strong>Department:</strong> ${app.department || 'Not specified'}</p>
+                            <p><strong>Year:</strong> ${app.year || 'Not specified'}</p>
+                        </div>
+                    </div>
+                    <div class="rejection-details">
+                        <h3>Application Details</h3>
+                        <p><strong>Category:</strong> ${app.category}</p>
+                        <p><strong>From Date:</strong> ${app.fromDate}</p>
+                        <p><strong>To Date:</strong> ${app.toDate}</p>
+                        <p><strong>Reason for Leave:</strong> ${app.reason || 'Not specified'}</p>
+                        <p><strong>Rejected By:</strong> ${app.rejectedBy || 'Staff'}</p>
+                        <p><strong>Rejected At:</strong> ${app.rejectedAt ? new Date(app.rejectedAt).toLocaleString() : 'Not specified'}</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('letterContent').innerHTML = modalContent;
+            document.getElementById('viewLetterModal').style.display = 'block';
+        }
+
+        function closeViewLetterModal() {
+            document.getElementById('viewLetterModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('viewLetterModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        };
+
+        function showError(message) {
+            const tableBody = document.querySelector("#applicationTable tbody");
+            tableBody.innerHTML = `<tr><td colspan='9' style='text-align: center; color: red;'>${message}</td></tr>`;
+        }
+    </script>
+</body>
+</html>
