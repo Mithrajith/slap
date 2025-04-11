@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.10">
+    <title>Student Leave Application Portal</title>
+    <link rel="stylesheet" href="statics/css/staff_css1.css"></style>
+</head>
+<body>
+    <header class="header">
+        <h1>Staff Approval Portal</h1>
+    </header>
+    <nav class="sidebar">
+        <div class="user-profile">
+            <div class="profile-pic"> 
+                <img src="{{ url_for('serve_image', filename=session.get('user_id', 'default') + '.png') }}" 
+                alt="Profile Picture" 
+                onerror="this.src='/statics/images/default.jpg'">
+       </div>
+       <span>{{ session.get('user_id', 'Guest') }}</span>
+        </div>
+        <ul class="menu-list">
+            <li><a href="staff_leave_request.html" ><svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                <path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zM8 6h8M8 10h8M8 14h5" stroke="#1a237e" stroke-width="2" fill="none"/>
+            </svg>Leave Applicates</a></li>
+            <li><a href="staff_manage.html"><svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                <path d="M4 21h16M8 17v-4m4 4v-8m4 8v-6" stroke="#1a237e" stroke-width="2" fill="none"/>
+            </svg>  Manage students</a></li>
+            <li><a href="login_student.html"><svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                <path d="M10 9h4v6h5l-7 7-7-7h5V9z"/>
+            </svg> Logout</a></li>
+
+        </ul>
+    </nav>
+
+    <div class="main-content">
+        <div class="box-container">
+            
+            <a href="staff_leave_request.html" class="box result">
+                <h2>Leave Applicates</h2>
+                <p>Leave and other permission application from your allocated students.</p>
+            </a>
+
+            <a href="staff_manage.html" class="box leave">
+                <h2>Manage student</h2>
+                <p>Manage the students details and add students.</p>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

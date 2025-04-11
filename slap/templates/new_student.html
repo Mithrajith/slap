@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Leave Application Portal</title>
+    <link rel="stylesheet" href="statics/css/student_css1.css"></style>
+</head>
+<body>
+    <header class="header">
+        <a href="student_dash.html" class="back-arrow">←</a>
+        <h1>Student Leave Application Portal</h1>
+    </header>
+
+    <nav class="sidebar">
+        <div class="user-profile">
+            <div class="profile-pic"> 
+                <img src="{{ url_for('serve_image', filename=session.get('user_id', 'default') + '.png') }}" 
+                alt="Profile Picture" 
+                onerror="this.src='/statics/images/default.jpg'">
+       </div>
+       <span>{{ session.get('user_id', 'Guest') }}</span>
+        </div>
+        <ul class="menu-list">
+            <li><a href="staff_dash.html"> <svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/>
+            </svg> Dashboard</a></li>
+            <li><a href="staff_leave_request.html" ><svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                <path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zM8 6h8M8 10h8M8 14h5" stroke="#1a237e" stroke-width="2" fill="none"/>
+            </svg> Leave Application</a></li>
+            <li><a href="staff_manage.html"><svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                <path d="M4 21h16M8 17v-4m4 4v-8m4 8v-6" stroke="#1a237e" stroke-width="2" fill="none"/>
+            </svg>Manage Students</a></li>
+            <li><a href="login_student.html"> <svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                <path d="M10 9h4v6h5l-7 7-7-7h5V9z"/>
+            </svg>  Logout</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <div class="form-header">
+            <div class="form-icon">📝</div>
+            <h2>New Student Details</h2>
+        </div>
+
+        <form class="form-container">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="regNo">Register No:</label>
+                    <input type="text" id="regNo" name="regNo" required>
+                </div>
+                <div class="form-group">
+                    <label for="dept">Department:</label>
+                    <input type="text" id="dept" name="dept" required>
+                </div>
+                <div class="form-group">
+                    <label for="total_leave">Total Leaves:</label>
+                    <input type="number" id="total_leave" name="total_leave" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="advisor">Student Advisor:</label>
+                    <input type="text" id="advisor_username" name="advisor_username" required>
+
+                </div>
+            </div>
+        
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+        
+            <div class="form-group">
+                <label for="year">Student Year:</label>
+                <select id="year" name="year" required>
+                    <option value="">Select Year</option>
+                    <option value="I">I</option>
+                    <option value="II">II</option>
+                    <option value="III">III</option>
+                    <option value="IV">IV</option>
+                </select>
+            </div>
+        
+            <div class="form-group">
+                <label for="password">Set Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+        
+            <div class="form-group">
+                <label for="image">Upload Image:</label>
+                <input type="file" id="image" name="image" accept="image/*" required>
+            </div>
+        
+            <button type="submit" class="submit-btn">Submit</button>
+        </form>
+        
+    </main>
+    <script>
+       document.querySelector('form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    
+    // Log the form data for debugging
+    for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+    }
+
+    try {
+        const response = await fetch('/api/new_student.html', {
+            method: 'POST',
+            body: formData  // FormData automatically sets the correct Content-Type
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Student added successfully!');
+            window.location.href = 'new_student.html';
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+        }
+    } catch (error) {
+        alert('Error submitting form. Please try again.');
+        console.error('Error:', error);
+    }
+});
+        
+        // File Upload and Preview Handling
+        const fileInput = document.getElementById('image');
+        const fileLabel = document.querySelector('.file-upload-label');
+        const fileName = document.querySelector('.file-name');
+        const filePreview = document.querySelector('.file-preview');
+        const container = document.querySelector('.file-upload-container');
+        
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                fileName.textContent = file.name;
+                container.classList.add('has-file');
+        
+                // Show image preview
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        filePreview.src = e.target.result;
+                        filePreview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            } else {
+                fileName.textContent = '';
+                container.classList.remove('has-file');
+                filePreview.style.display = 'none';
+            }
+        });
+        
+        // Drag and Drop Support
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileLabel.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        fileLabel.addEventListener('dragenter', function() {
+            this.classList.add('dragover');
+        });
+        
+        fileLabel.addEventListener('dragleave', function() {
+            this.classList.remove('dragover');
+        });
+        
+        fileLabel.addEventListener('drop', function(e) {
+            this.classList.remove('dragover');
+            fileInput.files = e.dataTransfer.files;
+            const event = new Event('change');
+            fileInput.dispatchEvent(event);
+        });
+        </script>
+        
+
+</body>
+</html>

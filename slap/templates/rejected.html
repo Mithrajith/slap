@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rejected Applications</title>
+    <link rel="stylesheet" href="statics/css/staff_css2.css">
+
+</head>
+<body>
+    <header class="header">
+        <h1>Rejected Leave Applications</h1>
+    </header>
+
+    <nav class="sidebar">
+        <div class="user-profile">
+            <div class="profile-pic"> 
+                <img src="{{ url_for('serve_image', filename=session.get('user_id', 'default') + '.jpg') }}" 
+                alt="Profile Picture" 
+                onerror="this.src='/statics/images/default.jpg'">
+       </div>
+       <span>{{ session.get('user_id', 'Guest') }}</span>
+        </div>
+        <ul class="menu-list">
+            <li><a href="student_dash.html">
+                <svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/>
+                </svg> Dashboard
+            </a></li>
+        
+            <li><a href="student_leave.html">
+                <!-- Unique Leave Application Icon -->
+                <svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                    <path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zM8 6h8M8 10h8M8 14h5" stroke="#1a237e" stroke-width="2" fill="none"/>
+                </svg> Leave Applications
+            </a></li>
+            <li><a href="student_result.html">
+                <svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                    <path d="M4 21h16M8 17v-4m4 4v-8m4 8v-6" stroke="#1a237e" stroke-width="2" fill="none"/>
+                </svg> Application Status</a></li>
+            <li><a href="login_student.html">
+                <svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                    <path d="M10 9h4v6h5l-7 7-7-7h5V9z"/>
+                </svg> Logout
+            </a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="header-actions">
+            <button class="stats-btn" onclick="clearRejectedHistory()">Clear Rejected Applications</button>
+
+        </div>
+        <table id="applicationTable">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>Student Name</th>
+                    <th>Student ID</th>
+                    <th>From Date</th>
+                    <th>To Date</th>
+                    <th>Category</th>
+                    <th>Rejected By</th>
+                    <th>Rejected At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Table will be populated by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- View Letter Modal -->
+    <div id="viewLetterModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeViewLetterModal()">&times;</span>
+            <div id="letterContent"></div>
+        </div>
+    </div>
+    <script>
+        let applications = [];
+
+        window.onload = async function() {
+            await loadRejectedApplications();
+            // Refresh every 30 seconds
+            setInterval(loadRejectedApplications, 10000);
+        };
+
+        async function clearRejectedHistory() {
+    const confirmation = confirm("Are you sure you want to clear your rejected applications? This action cannot be undone.");
+
+    if (confirmation) {
+        try {
+            const response = await fetch('/api/clear_rejected_history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert("Rejected applications cleared successfully!");
+                loadStudentApprovedApplications(); // Refresh table (update function name if needed)
+            } else {
+                alert("Failed to clear rejected applications: " + data.error);
+            }
+        } catch (error) {
+            console.error("Error clearing rejected applications:", error);
+            alert("An error occurred while clearing rejected applications.");
+        }
+    }
+}
+
+
+
+        async function loadRejectedApplications() {
+            try {
+                const response = await fetch('/api/get_rejected_applications');
+                if (!response.ok) throw new Error('Failed to fetch rejected applications');
+                
+                applications = await response.json();
+                populateRejectedTable();
+            } catch (error) {
+                console.error('Error loading rejected applications:', error);
+                showError('Failed to load rejected applications');
+            }
+        }
+
+        function populateRejectedTable() {
+            const tableBody = document.querySelector("#applicationTable tbody");
+            if (!tableBody) return;
+
+            if (!applications || applications.length === 0) {
+                tableBody.innerHTML = "<tr><td colspan='8' style='text-align: center;'>No rejected applications</td></tr>";
+                return;
+            }
+
+            tableBody.innerHTML = '';
+            applications.forEach(app => {
+                const row = `
+                    <tr>
+                        <td><img src="${app.photo || '/static/placeholder.jpg'}" alt="${app.name}" class="profile-img"></td>
+                        <td>${app.name}</td>
+                        <td>${app.studentId}</td>
+                        <td>${app.fromDate}</td>
+                        <td>${app.toDate}</td>
+                        <td>${app.category}</td>
+                        <td>${app.rejectedBy || 'Staff'}</td>
+                        <td>${app.rejectedAt ? new Date(app.rejectedAt).toLocaleString() : 'Not specified'}</td>
+                        <td><button class="view-btn" onclick="viewDetails(${app.id})">View</button></td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function viewDetails(id) {
+            const app = applications.find(a => a.id === id);
+            if (!app) {
+                alert('Application details not found.');
+                return;
+            }
+
+            const modalContent = `
+                <div class="application-details">
+                    <div class="student-info">
+                        <img src="${app.photo || '/static/placeholder.jpg'}" alt="${app.name}" class="student-photo">
+                        <div>
+                            <h2>${app.name}</h2>
+                            <p><strong>Student ID:</strong> ${app.studentId}</p>
+                            <p><strong>Department:</strong> ${app.department || 'Not specified'}</p>
+                            <p><strong>Year:</strong> ${app.year || 'Not specified'}</p>
+                        </div>
+                    </div>
+                    <div class="rejection-details">
+                        <h3>Application Details</h3>
+                        <p><strong>Category:</strong> ${app.category}</p>
+                        <p><strong>From Date:</strong> ${app.fromDate}</p>
+                        <p><strong>To Date:</strong> ${app.toDate}</p>
+                        <p><strong>Reason for Leave:</strong> ${app.reason || 'Not specified'}</p>
+                        <p><strong>Rejected By:</strong> ${app.rejectedBy || 'Staff'}</p>
+                        <p><strong>Rejected At:</strong> ${app.rejectedAt ? new Date(app.rejectedAt).toLocaleString() : 'Not specified'}</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('letterContent').innerHTML = modalContent;
+            document.getElementById('viewLetterModal').style.display = 'block';
+        }
+
+        function closeViewLetterModal() {
+            document.getElementById('viewLetterModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('viewLetterModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        };
+
+        function showError(message) {
+            const tableBody = document.querySelector("#applicationTable tbody");
+            tableBody.innerHTML = `<tr><td colspan='9' style='text-align: center; color: red;'>${message}</td></tr>`;
+        }
+    </script>
+</body>
+</html>

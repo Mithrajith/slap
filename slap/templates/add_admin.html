@@ -1,0 +1,107 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Admin Member</title>
+    <style>
+        /* Same CSS as add_staff.html */
+        .form-container {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 2rem;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .submit-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+        .error-message {
+            color: red;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Add New Admin Member</h2>
+        <form id="addAdminForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="admin_name">Admin Name:</label>
+                <input type="text" id="admin_name" name="admin_name" required>
+            </div>
+            <div class="form-group">
+                <label for="admin_id">Admin ID:</label>
+                <input type="text" id="admin_id" name="admin_id" required>
+            </div>
+            <div class="form-group">
+                <label for="department">Department:</label>
+                <input type="text" id="department" name="department" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <label for="image">Profile Photo:</label>
+                <input type="file" id="image" name="image" accept="image/*">
+            </div>
+            <button type="submit" class="submit-btn">Add Admin Member</button>
+        </form>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        document.getElementById('addAdminForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch('/api/admin/add', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('message').innerHTML = `
+                        <p style="color: green">${data.message}</p>
+                    `;
+                    e.target.reset();
+                } else {
+                    document.getElementById('message').innerHTML = `
+                        <p style="color: red">${data.error}</p>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('message').innerHTML = `
+                    <p style="color: red">An error occurred. Please try again.</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

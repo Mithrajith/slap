@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Leave Application Portal</title>
+    <link rel="stylesheet" href="statics/css/staff_css2.css"></style>
+
+</head>
+<body>
+    <header class="header">
+        <h1>Leave Requestes</h1>
+    </header>
+
+    <nav class="sidebar">
+        <div class="user-profile">
+            <div class="profile-pic">
+                <img src="{{ url_for('serve_image', filename=session.get('user_id', 'default') + '.png') }}" 
+                alt="Profile Picture" 
+                onerror="this.src='/statics/images/default.jpg'">
+       </div>
+       <span>{{ session.get('user_id', 'Guest') }}</span>
+        </div>
+        <ul class="menu-list">
+            <li><a href="staff_dash.html" >
+                <svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/>
+                </svg> Dashboard
+            </a></li>
+            <li><a href="staff_manage.html">
+                <svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                    <path d="M4 21h16M8 17v-4m4 4v-8m4 8v-6" stroke="#1a237e" stroke-width="2" fill="none"/>
+                </svg>  Manage Students
+            </a></li>
+            <li><a href="login_student.html"><svg class="menu-icon" width="24" height="24" viewBox="0 0 24 24" fill="#1a237e">
+                <path d="M10 9h4v6h5l-7 7-7-7h5V9z"/>
+            </svg> Logout</a></li>
+
+        </ul>
+    </nav>
+    <div class="container">
+        <div class="header-actions">
+            <button class="stats-btn" onclick="openStatsModal()">Leave Statistics</button>
+            <div class="search-container">
+                <div class="search-box" id="searchBox">
+                    <input type="text" id="searchInput" placeholder="Search...">
+                </div>
+        </div>
+
+        
+        <table id="applicationTable">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th id ='nameHeader'>Student Name</th>
+                    <th id = 'idHeader'>Student ID</th>
+                    <th>From Date</th>
+                    <th>To Date</th>
+                    <th>
+                        <label id="categoryLabel" style="cursor: pointer;">Category:</label>
+                        <div id="categoryMenu" class="dropdown-menu" style="display: none;">
+                            <div class="dropdown-item" onclick="selectCategory()">ALL</div>
+                            <div class="dropdown-item" onclick="selectCategory('Leave')">Leave</div>
+                            <div class="dropdown-item" onclick="selectCategory('OD')">On Duty (OD)</div>
+                            <div class="dropdown-item" onclick="selectCategory('Discipline')">Discipline</div>
+                            <div class="dropdown-item" onclick="selectCategory('Report')">Report</div>
+                            <div class="dropdown-item" onclick="selectCategory('Apology')">Apology</div>
+                            <div class="dropdown-item" onclick="selectCategory('GatePass')">Gate Pass</div>
+                        </div>
+                    </th>
+                    
+                    
+                    
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Application rows will be inserted here by JavaScript -->
+            </tbody>
+        </table>
+
+
+    <!-- Modals -->
+    <div id="remarksModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRemarkModal()">&times;</span>
+            <h2>Enter Remarks</h2>
+            <textarea id="remarkText" placeholder="Enter your remarks here..."></textarea>
+            <button class="approve-btn" onclick="submitRemark()">Send</button>
+        </div>
+    </div>
+
+    <div id="viewLetterModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeViewLetterModal()">&times;</span>
+            <div id="letterContent">
+                <!-- Letter content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="statsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeStatsModal()">&times;</span>
+            <h2>Leave Statistics</h2>
+            <div id="statsContent">
+                <!-- Statistics content will be inserted here -->
+            </div>
+        </div>
+    </div>
+    <script src="/static/js/leave-workflow.js"></script>
+    <script>
+            let applications = [];
+
+            window.onload = async function() {
+                await loadApplications();
+                setInterval(loadApplications, 30000);
+            };
+
+    
+        document.addEventListener("DOMContentLoaded", () => {
+        const searchBox = document.getElementById("searchBox");
+        const searchInput = document.getElementById("searchInput");
+        let searchType = "";
+
+        function showSearchBox(type) {
+            searchType = type;
+            searchBox.style.display = "block";
+            searchInput.focus();
+            searchInput.value = "";
+            filterTable("");
+        }
+
+        function hideSearchBox() {
+            searchBox.style.display = "none";
+        }
+
+        document.getElementById("nameHeader").addEventListener("click", () => showSearchBox("name"));
+        document.getElementById("idHeader").addEventListener("click", () => showSearchBox("id"));
+
+        searchInput.addEventListener("input", () => {
+            filterTable(searchInput.value.toLowerCase());
+        });
+
+        function filterTable(query) {
+            const rows = document.querySelectorAll("#applicationTable tbody tr");
+            rows.forEach(row => {
+                const cellIndex = searchType === "name" ? 1 : 2;
+                const cellText = row.cells[cellIndex].textContent.toLowerCase();
+                row.style.display = cellText.includes(query) ? "" : "none";
+            });
+        }
+
+        document.addEventListener("click", (event) => {
+            if (!event.target.matches("#nameHeader, #idHeader, #searchInput")) {
+                hideSearchBox();
+            }
+        });
+    });
+
+
+        // Hide the dropdown when the user clicks elsewhere
+        // document.getElementById("categoryFilter").addEventListener("blur", function() {
+        //     this.style.display = "none";
+        // });
+
+
+        document.getElementById("categoryLabel").addEventListener("click", function(event) {
+            let menu = document.getElementById("categoryMenu");
+            menu.style.display = menu.style.display === "none" ? "block" : "none";
+            event.stopPropagation(); // Prevent click from closing immediately
+        });
+
+        document.addEventListener("click", function() {
+            document.getElementById("categoryMenu").style.display = "none"; // Close when clicking outside
+        });
+
+        function selectCategory(category) {
+            alert("Selected Category: " + category); // Handle selection
+            document.getElementById("categoryMenu").style.display = "none"; // Hide after selection
+        }
+    
+
+        // Hide the dropdown when the user clicks elsewhere
+        // document.getElementById("categoryFilter").addEventListener("blur", function() {
+        //     this.style.display = "none";
+        // });
+
+
+            function filterTable() {
+                const selectedCategory = document.getElementById("categoryFilter").value;
+                const rows = document.querySelectorAll("#applicationTable tbody tr");
+                
+                rows.forEach(row => {
+                    const categoryCell = row.cells[5]; // Category column
+                    if (!selectedCategory || categoryCell.textContent === selectedCategory) {
+                        row.style.display = "";
+                    } else {
+                        row.style.display = "none";
+                    }
+                });
+            }
+            function selectCategory(category) {
+    document.getElementById("categoryMenu").style.display = "none"; // Hide dropdown
+
+    // Get all table rows
+    const rows = document.querySelectorAll("#applicationTable tbody tr");
+
+    rows.forEach(row => {
+        const categoryCell = row.cells[5]; // Category column index
+        if (!category || categoryCell.textContent.trim() === category) {
+            row.style.display = ""; // Show row
+        } else {
+            row.style.display = "none"; // Hide row
+        }
+    });
+}
+
+async function loadApplications() {
+    try {
+        const response = await fetch('/api/get_leave_applications');
+        if (!response.ok) throw new Error('Failed to fetch applications');
+
+        applications = await response.json();
+        console.log("📌 Loaded Applications:", applications); // ✅ Debugging
+
+        if (applications.length === 0) {
+            document.querySelector("#applicationTable tbody").innerHTML = "<tr><td colspan='7' style='text-align: center;'>No applications found</td></tr>";
+            return;
+        }
+
+        populateTable();
+    } catch (error) {
+        console.error('❌ Error loading applications:', error);
+    }
+}
+
+
+
+
+            async function approveApplication(id) {
+                try {
+                    const response = await fetch('/api/update_leave_status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            id: id, 
+                            status: 'staff_approved',
+                            role: 'staff'
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to approve application');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert('Application forwarded to admin for approval');
+                        await loadApplications();
+                    } else {
+                        throw new Error(data.error || 'Failed to approve application');
+                    }
+                } catch (error) {
+                    alert(error.message);
+                }
+            }
+
+            async function rejectApplication(id) {
+            try {
+                const response = await fetch('/api/update_leave_status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        id: id, 
+                        status: 'rejected',
+                        role: 'staff',
+                        rejectedBy: 'Staff',
+                        rejectedAt: new Date().toISOString()
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to reject application');
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Application rejected');
+
+                    // Find the rejected application details
+                    const rejectedApp = applications.find(app => app.id === id);
+
+                    if (rejectedApp) {
+                        // Store rejected application data in localStorage
+                        localStorage.setItem('rejectedApplication', JSON.stringify({
+                            regNo: rejectedApp.studentId,
+                            name: rejectedApp.name,
+                            dept: rejectedApp.department,
+                            year: rejectedApp.year,
+                            fromDate: rejectedApp.fromDate,
+                            toDate: rejectedApp.toDate,
+                            category: rejectedApp.category,
+                            reason: rejectedApp.reason
+                        }));
+                    }
+
+                    await loadApplications(); // Refresh the table
+
+                } else {
+                    throw new Error(data.error || 'Failed to reject application');
+                }
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+
+        function populateTable() {
+    const tableBody = document.querySelector("#applicationTable tbody");
+    if (!tableBody) return;
+
+    console.log("📌 Populating table with applications:", applications); // ✅ Debugging
+
+    tableBody.innerHTML = ''; // ✅ Clear previous data before reloading
+
+    applications.forEach(app => {
+        console.log(`📌 Adding application: ${app.name} - ${app.studentId}`); // ✅ Debugging
+
+        if (!app.studentId) {
+            console.error("❌ Missing studentId for application:", app);
+            return;
+        }
+
+        const row = `
+            <tr>
+                <td><img src="${app.photo || '/statics/images/default.jpg'}" alt="${app.name}" class="profile-img"></td>
+                <td>${app.name}</td>
+                <td>${app.studentId}</td>
+                <td>${app.fromDate}</td>
+                <td>${app.toDate}</td>
+                <td>${app.category}</td>
+                <td>
+                    <button class="view-btn" onclick="viewLeaveLetter(${app.id})">View</button>
+                    <button class="approve-btn" onclick="approveApplication(${app.id})">Accept</button>
+                    <button class="reject-btn" onclick="rejectApplication(${app.id})">Reject</button>
+                    <button class="remark-btn" onclick="openRemarkModal(${app.id})">Remark</button>
+                </td>
+            </tr>
+        `;
+        tableBody.innerHTML += row;
+    });
+
+    console.log("✅ Table populated successfully.");
+}
+
+        function viewLeaveLetter(id) {
+            const app = applications.find(a => a.id === id);
+            const letterContent = `
+                <div class="leave-letter">
+                    <div class="student-info">
+                        <img src="${app.photo}" alt="${app.name}" class="student-photo">
+                        <div>
+                            <h2>${app.name}</h2>
+                            <p>Student ID: ${app.studentId}</p>
+                            <p>Department: ${app.department}</p>
+                            <p>Year: ${app.year}</p>
+                        </div>
+                    </div>
+                    <h3>Application Details</h3>
+                    <p><strong>Category:</strong> ${app.category}</p>
+                    <p><strong>From Date:</strong> ${app.fromDate}</p>
+                    <p><strong>To Date:</strong> ${app.toDate}</p>
+                    <p><strong>Total Days:</strong> ${app.totalLeaveDays}</p>
+                    <p><strong>Reason:</strong> ${app.reason}</p>
+                    <p><strong>Previous Leaves Taken:</strong> ${app.previousLeaves} days</p>
+                </div>
+            `;
+            document.getElementById('letterContent').innerHTML = letterContent;
+            document.getElementById('viewLetterModal').style.display = 'block';
+        }
+
+
+        // ... (keep the rest of your existing modal and UI functions)
+
+        // Calculate days between two dates
+        function calculateDays(fromDate, toDate) {
+            const start = new Date(fromDate);
+            const end = new Date(toDate);
+            const diffTime = Math.abs(end - start);
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        }
+
+        // Mock function to get previous leaves (replace with actual API call)
+        async function getPreviousLeaves(studentId) {
+            // This should be replaced with actual API call to get previous leaves
+            // For now, returning random number between 0 and 5
+            return Math.floor(Math.random() * 6);
+        }
+
+
+
+
+        function openRemarkModal(id) {
+            document.getElementById('remarksModal').style.display = 'block';
+            document.getElementById('remarkText').dataset.applicationId = id;
+        }
+
+        async function submitRemark() {
+            const remarkText = document.getElementById('remarkText').value;
+            const applicationId = document.getElementById('remarkText').dataset.applicationId;
+            
+            try {
+                // Here you would typically make an API call to save the remark
+                // await fetch('/api/add_remark', { method: 'POST', body: JSON.stringify({ id: applicationId, remark: remarkText }) });
+                
+                alert(`Remark submitted for application ${applicationId}: ${remarkText}`);
+                closeRemarkModal();
+            } catch (error) {
+                console.error('Error submitting remark:', error);
+                alert('Failed to submit remark');
+            }
+        }
+
+        function openStatsModal() {
+            const totalWorkingDays = 180;
+            const stats = applications.map(app => {
+                const leaveDays = app.totalLeaveDays + app.previousLeaves;
+                const attendancePercentage = ((totalWorkingDays - leaveDays) / totalWorkingDays * 100).toFixed(2);
+                return {
+                    name: app.name,
+                    studentId: app.studentId,
+                    leaveDays,
+                    attendancePercentage
+                };
+            });
+
+            const statsHtml = `
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Student ID</th>
+                            <th>Total Leave Days</th>
+                            <th>Attendance Percentage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${stats.map(stat => `
+                            <tr>
+                                <td>${stat.name}</td>
+                                <td>${stat.studentId}</td>
+                                <td>${stat.leaveDays} days</td>
+                                <td>${stat.attendancePercentage}%</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('statsContent').innerHTML = statsHtml;
+            document.getElementById('statsModal').style.display = 'block';
+        }
+
+        // Modal handling functions
+        function closeViewLetterModal() {
+            document.getElementById('viewLetterModal').style.display = 'none';
+        }
+
+        function closeRemarkModal() {
+            document.getElementById('remarksModal').style.display = 'none';
+        }
+
+        function closeStatsModal() {
+            document.getElementById('statsModal').style.display = 'none';
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const modals = [
+                document.getElementById('viewLetterModal'),
+                document.getElementById('remarksModal'),
+                document.getElementById('statsModal')
+            ];
+            
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        };
+    </script>
+            </body>
+            </html>
