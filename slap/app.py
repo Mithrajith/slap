@@ -100,8 +100,8 @@ def generate_acceptance_letter(student_info):
         pdf_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'statics', 'pdfs')
         os.makedirs(pdf_dir, exist_ok=True)
 
-        # Generate PDF filename using student registration number
-        filename = f"{student_info['reg_no']}_acceptance.pdf"
+        # Generate PDF filename using student registration number and application ID
+        filename = f"{student_info['reg_no']}_{student_info['application_id']}_acceptance.pdf"
         filepath = os.path.join(pdf_dir, filename)
 
         # Create the PDF with margins
@@ -123,7 +123,7 @@ def generate_acceptance_letter(student_info):
         # Add date and reference number in a formatted box
         c.setFont('Helvetica', 10)
         current_date = datetime.now().strftime("%B %d, %Y")
-        ref_no = f"LA/{student_info['reg_no']}/{datetime.now().strftime('%Y%m%d')}"
+        ref_no = f"LA/{student_info['reg_no']}/{student_info['application_id']}/{datetime.now().strftime('%Y%m%d')}"
         
         # Draw a light box for date and reference
         c.setFillColorRGB(0.95, 0.95, 0.95)  # Light gray
@@ -156,9 +156,28 @@ def generate_acceptance_letter(student_info):
                 # Convert web path to filesystem path
                 image_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), image_path.lstrip('/'))
                 if os.path.exists(image_path):
-                    # Draw image on the right side of the student details box
-                    c.drawImage(image_path, width-margin-1.5*inch, y_position + 0.2*inch, 
-                              width=1.2*inch, height=1.2*inch, preserveAspectRatio=True)
+                    # Process image to ensure consistent dimensions
+                    try:
+                        # Open and resize the image
+                        img = Image.open(image_path)
+                        # Convert to RGB if necessary
+                        if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+                            img = img.convert('RGB')
+                        # Resize to fixed dimensions (1.2 inches = 86.4 points)
+                        img = img.resize((86, 86), Image.Resampling.LANCZOS)
+                        # Save the processed image temporarily
+                        temp_path = os.path.join(os.path.dirname(image_path), 'temp_student.jpg')
+                        img.save(temp_path, 'JPEG', quality=95)
+                        # Draw the processed image
+                        c.drawImage(temp_path, width-margin-1.5*inch, y_position + 0.2*inch, 
+                                  width=1.2*inch, height=1.2*inch, preserveAspectRatio=True)
+                        # Clean up temporary file
+                        os.remove(temp_path)
+                    except Exception as e:
+                        print(f"Warning: Could not process student image: {e}")
+                        # Fallback to original image if processing fails
+                        c.drawImage(image_path, width-margin-1.5*inch, y_position + 0.2*inch, 
+                                  width=1.2*inch, height=1.2*inch, preserveAspectRatio=True)
         except Exception as e:
             print(f"Warning: Could not add student image: {e}")
         
@@ -811,7 +830,8 @@ def update_leave_status():
                         'to_date': student_data[5],
                         'total_days': student_data[6],
                         'category': student_data[7],
-                        'reason': student_data[8]
+                        'reason': student_data[8],
+                        'application_id': leave_id  # Add application ID
                     }
                     
                     # Generate acceptance letter
