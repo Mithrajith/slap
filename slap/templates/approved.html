@@ -82,6 +82,7 @@
                         <td>{{ leave.category }}</td>
                         <td>
                             <button class="view-btn" onclick="viewLeaveLetter('{{ leave.studentId }}')">View</button>
+                            <button class="download-btn" onclick="downloadAcceptanceLetter('{{ leave.id }}')">Download</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -197,6 +198,7 @@
                         <td>${app.category}</td>
                         <td>
                             <button class="view-btn" onclick="viewLeaveLetter(${app.id})">View</button>
+                            <button class="download-btn" onclick="downloadAcceptanceLetter(${app.id})">Download</button>
                         </td>
                     </tr>
                 `;
@@ -245,6 +247,40 @@
                 modal.style.display = 'none';
             }
         };
+
+        // Function to download acceptance letter
+        async function downloadAcceptanceLetter(leaveId) {
+            try {
+                const response = await fetch(`/api/download_acceptance_letter/${leaveId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to download acceptance letter');
+                }
+                
+                // Get the filename from the Content-Disposition header
+                const contentDisposition = response.headers.get('Content-Disposition');
+                const filename = contentDisposition
+                    ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                    : `acceptance_letter_${leaveId}.pdf`;
+
+                // Create a blob from the response
+                const blob = await response.blob();
+                
+                // Create a download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                
+                // Clean up
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                console.error('Error downloading acceptance letter:', error);
+                alert('Failed to download acceptance letter. Please try again.');
+            }
+        }
     </script>
     
             </body>

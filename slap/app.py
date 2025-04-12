@@ -8,6 +8,286 @@ import os
 from functools import wraps
 from pathlib import Path
 from flask_session import Session
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib import colors
+from reportlab.platypus import Paragraph
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from datetime import datetime
+import math
+from PIL import Image, ImageDraw, ImageFont
+
+def generate_seal_image(date_str):
+    """Generate a seal image with the date embedded"""
+    try:
+        # Create images directory if it doesn't exist
+        seal_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'statics', 'seals')
+        os.makedirs(seal_dir, exist_ok=True)
+
+        # Generate seal filename using date
+        filename = f"seal_{date_str.replace('-', '')}.png"
+        filepath = os.path.join(seal_dir, filename)
+
+        # Create a new image with white background
+        size = 400  # Increased size for better quality
+        image = Image.new('RGBA', (size, size), (255, 255, 255, 255))
+        draw = ImageDraw.Draw(image)
+
+        # Draw outer circle
+        draw.ellipse([20, 20, size-20, size-20], outline=(0, 100, 0, 255), width=10)
+
+        # Draw inner circle
+        draw.ellipse([50, 50, size-50, size-50], outline=(0, 100, 0, 255), width=6)
+
+        # Add "OFFICIAL SEAL" text
+        try:
+            font = ImageFont.truetype("arial.ttf", 32)
+        except:
+            font = ImageFont.load_default()
+        
+        # Draw text in a circle
+        text = "OFFICIAL SEAL"
+        text_length = len(text)
+        for i, char in enumerate(text):
+            angle = (i / text_length) * 2 * math.pi
+            x = size/2 + (size/2 - 60) * math.cos(angle - math.pi/2)
+            y = size/2 + (size/2 - 60) * math.sin(angle - math.pi/2)
+            draw.text((x-15, y-15), char, fill=(0, 100, 0, 255), font=font)
+
+        # Add date in the center with larger font
+        try:
+            date_font = ImageFont.truetype("arial.ttf", 36)
+        except:
+            date_font = ImageFont.load_default()
+        
+        # Calculate text size for centering
+        date_bbox = draw.textbbox((0, 0), date_str, font=date_font)
+        date_width = date_bbox[2] - date_bbox[0]
+        date_height = date_bbox[3] - date_bbox[1]
+        
+        # Draw date
+        draw.text((size/2 - date_width/2, size/2 - date_height/2), 
+                 date_str, fill=(0, 100, 0, 255), font=date_font)
+
+        # Add "APPROVED" text below date
+        try:
+            approved_font = ImageFont.truetype("arial.ttf", 28)
+        except:
+            approved_font = ImageFont.load_default()
+        
+        approved_text = "APPROVED"
+        approved_bbox = draw.textbbox((0, 0), approved_text, font=approved_font)
+        approved_width = approved_bbox[2] - approved_bbox[0]
+        approved_height = approved_bbox[3] - approved_bbox[1]
+        
+        # Draw APPROVED text
+        draw.text((size/2 - approved_width/2, size/2 + date_height), 
+                 approved_text, fill=(0, 100, 0, 255), font=approved_font)
+
+        # Save the image
+        image.save(filepath)
+        return filepath
+
+    except Exception as e:
+        print(f"Error generating seal image: {e}")
+        return None
+
+def generate_acceptance_letter(student_info):
+    """Generate a professional PDF acceptance letter for approved leave applications"""
+    try:
+        # Create pdfs directory if it doesn't exist
+        pdf_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'statics', 'pdfs')
+        os.makedirs(pdf_dir, exist_ok=True)
+
+        # Generate PDF filename using student registration number
+        filename = f"{student_info['reg_no']}_acceptance.pdf"
+        filepath = os.path.join(pdf_dir, filename)
+
+        # Create the PDF with margins
+        c = canvas.Canvas(filepath, pagesize=A4)
+        width, height = A4
+        margin = 1.2*inch  # Increased margin for better formatting
+
+        # Add institutional logo or header (if available)
+        c.setFont('Helvetica-Bold', 16)
+        c.drawCentredString(width/2, height-margin, "STUDENT LEAVE APPLICATION PORTAL")
+        
+        # Add line under header
+        c.line(margin, height-margin-0.2*inch, width-margin, height-margin-0.2*inch)
+        
+        # Add title
+        c.setFont('Helvetica-Bold', 14)
+        c.drawCentredString(width/2, height-margin-0.7*inch, "LEAVE ACCEPTANCE LETTER")
+        
+        # Add date and reference number in a formatted box
+        c.setFont('Helvetica', 10)
+        current_date = datetime.now().strftime("%B %d, %Y")
+        ref_no = f"LA/{student_info['reg_no']}/{datetime.now().strftime('%Y%m%d')}"
+        
+        # Draw a light box for date and reference
+        c.setFillColorRGB(0.95, 0.95, 0.95)  # Light gray
+        c.rect(margin, height-margin-1.7*inch, width-2*margin, 0.8*inch, fill=1)
+        c.setFillColorRGB(0, 0, 0)  # Back to black
+        
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(margin + 0.2*inch, height-margin-1.2*inch, "Date:")
+        c.drawString(margin + 0.2*inch, height-margin-1.5*inch, "Reference No:")
+        
+        c.setFont('Helvetica', 10)
+        c.drawString(margin + 1.2*inch, height-margin-1.2*inch, current_date)
+        c.drawString(margin + 1.2*inch, height-margin-1.5*inch, ref_no)
+
+        # Add student details in a formatted box
+        y_position = height-margin-2.5*inch
+        
+        # Draw a light box for student details
+        c.setFillColorRGB(0.95, 0.95, 0.95)
+        c.rect(margin, y_position, width-2*margin, 1.4*inch, fill=1)
+        c.setFillColorRGB(0, 0, 0)
+        
+        c.setFont('Helvetica-Bold', 11)
+        c.drawString(margin + 0.2*inch, y_position + 1.2*inch, "STUDENT DETAILS")
+        
+        # Add student image
+        try:
+            image_path = get_student_image(student_info['reg_no'])
+            if image_path and image_path != "/statics/images/default.jpg":
+                # Convert web path to filesystem path
+                image_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), image_path.lstrip('/'))
+                if os.path.exists(image_path):
+                    # Draw image on the right side of the student details box
+                    c.drawImage(image_path, width-margin-1.5*inch, y_position + 0.2*inch, 
+                              width=1.2*inch, height=1.2*inch, preserveAspectRatio=True)
+        except Exception as e:
+            print(f"Warning: Could not add student image: {e}")
+        
+        # Student information
+        c.setFont('Helvetica-Bold', 10)
+        details = [
+            ("Name", student_info['student_name']),
+            ("Registration Number", student_info['reg_no']),
+            ("Department", student_info['department']),
+            ("Year", student_info['year'])
+        ]
+
+        y_offset = 0.9
+        for label, value in details:
+            c.setFont('Helvetica-Bold', 10)
+            c.drawString(margin + 0.2*inch, y_position + y_offset*inch, f"{label}:")
+            c.setFont('Helvetica', 10)
+            c.drawString(margin + 1.7*inch, y_position + y_offset*inch, str(value))
+            y_offset -= 0.25
+
+        # Add leave details in a formatted box
+        y_position -= 2*inch
+        
+        # Draw a light box for leave details
+        c.setFillColorRGB(0.95, 0.95, 0.95)
+        c.rect(margin, y_position, width-2*margin, 1.8*inch, fill=1)
+        c.setFillColorRGB(0, 0, 0)
+        
+        c.setFont('Helvetica-Bold', 11)
+        c.drawString(margin + 0.2*inch, y_position + 1.6*inch, "LEAVE DETAILS")
+        
+        # Leave information
+        c.setFont('Helvetica-Bold', 10)
+        leave_details = [
+            ("From Date", student_info['from_date']),
+            ("To Date", student_info['to_date']),
+            ("Total Days", str(student_info['total_days'])),
+            ("Category", student_info['category']),
+            ("Reason", student_info['reason'])
+        ]
+
+        y_offset = 1.3
+        for label, value in leave_details:
+            c.setFont('Helvetica-Bold', 10)
+            c.drawString(margin + 0.2*inch, y_position + y_offset*inch, f"{label}:")
+            c.setFont('Helvetica', 10)
+            
+            # Handle long reason text with wrapping
+            if label == "Reason":
+                words = value.split()
+                line = ""
+                x_pos = margin + 1.7*inch
+                for word in words:
+                    test_line = line + " " + word if line else word
+                    if c.stringWidth(test_line, "Helvetica", 10) < width - x_pos - margin:
+                        line = test_line
+                    else:
+                        c.drawString(x_pos, y_position + y_offset*inch, line)
+                        y_offset -= 0.2
+                        line = word
+                if line:
+                    c.drawString(x_pos, y_position + y_offset*inch, line)
+            else:
+                c.drawString(margin + 1.7*inch, y_position + y_offset*inch, str(value))
+            y_offset -= 0.25
+
+        # Add approval message
+        y_position -= 1*inch
+        approval_text = (
+            "This is to certify that the above leave application has been reviewed and approved by the concerned "
+            "authorities. The student is hereby permitted to take leave for the specified duration. This approval "
+            "is subject to the terms and conditions of the institution's leave policy."
+        )
+        
+        # Create text object for approval message with proper wrapping
+        text = c.beginText(margin, y_position)
+        text.setFont("Helvetica", 10)
+        
+        # Wrap text
+        words = approval_text.split()
+        line = ""
+        for word in words:
+            test_line = line + " " + word if line else word
+            if c.stringWidth(test_line, "Helvetica", 10) < width - 2*margin:
+                line = test_line
+            else:
+                text.textLine(line)
+                line = word
+        if line:
+            text.textLine(line)
+        
+        c.drawText(text)
+
+        # Add signature section
+        y_position -= 2*inch
+        c.line(width-margin-2.5*inch, y_position, width-margin, y_position)
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(width-margin-2.3*inch, y_position-0.2*inch, "Administrative Officer")
+        
+        # Generate and add seal image with adjusted position
+        seal_date = datetime.now().strftime("%d-%m-%Y")
+        seal_path = generate_seal_image(seal_date)
+        if seal_path and os.path.exists(seal_path):
+            # Draw seal image above signature with adjusted position
+            c.drawImage(seal_path, width-margin-1.5*inch, y_position + 0.2*inch, 
+                       width=1.2*inch, height=1.2*inch, preserveAspectRatio=True)
+        
+        # Add footer with simple layout
+        c.line(margin, 1*inch, width-margin, 1*inch)
+        c.setFont('Helvetica', 8)
+        c.drawString(margin, 0.7*inch, f"Generated on: {current_date}")
+        c.drawString(width-margin-2*inch, 0.7*inch, f"Page 1 of 1")
+        
+        # Add simple watermark
+        c.setFont('Helvetica-Bold', 16)
+        c.setFillColorRGB(0.9, 0.9, 0.9)  # Very light gray
+        c.rotate(45)
+        c.drawString(width/4, -height/4, "OFFICIAL")
+        c.rotate(-45)
+        c.setFillColorRGB(0, 0, 0)  # Reset to black
+
+        # Save the PDF
+        c.save()
+        print(f"✅ Generated acceptance letter: {filepath}")
+        return filepath
+
+    except Exception as e:
+        print(f"❌ Error generating acceptance letter: {e}")
+        raise
 
 app = Flask(__name__)
 CORS(app)
@@ -32,6 +312,14 @@ def init_db():
     try:
         conn = sqlite3.connect('leave_portal.db')
         c = conn.cursor()
+
+        # Check if acceptance_letter column exists
+        c.execute("PRAGMA table_info(leave_applications)")
+        columns = [column[1] for column in c.fetchall()]
+        
+        if 'acceptance_letter' not in columns:
+            print("Adding acceptance_letter column to leave_applications table")
+            c.execute('ALTER TABLE leave_applications ADD COLUMN acceptance_letter TEXT')
 
         c.execute('''
             CREATE TABLE IF NOT EXISTS students (
@@ -85,10 +373,10 @@ def init_db():
                 category TEXT NOT NULL,
                 rejected_by TEXT,
                 rejected_at TIMESTAMP,
+                acceptance_letter TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-
 
         conn.commit()
         conn.close()
@@ -104,21 +392,6 @@ init_db()
 @app.route('/api/new_student.html', methods=['POST'])
 def add_student():
     try:
-        data = request.form
-        image = request.files.get('image')  # Get the uploaded image
-        print("Received Data:", data)
-        print("Received Image:", image)
-
-        conn = sqlite3.connect('leave_portal.db')
-        c = conn.cursor()
-
-        # Check if student already exists
-        c.execute("SELECT reg_no FROM students WHERE reg_no = ?", (data['regNo'],))
-        if c.fetchone():
-            return jsonify({'error': 'Student already exists'}), 400
-
-        # Hash the password before storing it
-        hashed_password = hash_password(data['password'])
 
         # Handle image upload
         if image:
@@ -518,13 +791,44 @@ def update_leave_status():
 
         elif role == 'admin':
             if new_status == 'approved':
-                # Admin approved
+                # Get student details for acceptance letter
                 c.execute('''
-                    UPDATE leave_applications 
-                    SET status = 'approved'
+                    SELECT student_name, reg_no, department, year, from_date, to_date, 
+                           total_days, category, reason
+                    FROM leave_applications 
                     WHERE id = ? AND status = 'staff_approved'
                 ''', (leave_id,))
-                print(f"✅ Leave {leave_id} fully approved by admin")
+                
+                student_data = c.fetchone()
+                if student_data:
+                    # Prepare data for acceptance letter
+                    student_info = {
+                        'student_name': student_data[0],
+                        'reg_no': student_data[1],
+                        'department': student_data[2],
+                        'year': student_data[3],
+                        'from_date': student_data[4],
+                        'to_date': student_data[5],
+                        'total_days': student_data[6],
+                        'category': student_data[7],
+                        'reason': student_data[8]
+                    }
+                    
+                    # Generate acceptance letter
+                    pdf_path = generate_acceptance_letter(student_info)
+                    filename = os.path.basename(pdf_path)
+                    
+                    # Update application with acceptance letter path
+                    c.execute('''
+                        UPDATE leave_applications 
+                        SET status = 'approved',
+                            acceptance_letter = ?
+                        WHERE id = ?
+                    ''', (filename, leave_id))
+                    print(f"✅ Leave {leave_id} fully approved by admin with acceptance letter")
+                else:
+                    print(f"❌ Could not find leave application {leave_id}")
+                    
             elif new_status == 'rejected':
                 # Admin rejected
                 c.execute('''
@@ -640,18 +944,18 @@ def verify_admin_password(stored_hex, provided_password):
         # Admin passwords might be using a simpler hashing scheme
         # Try direct SHA-256 comparison first
         simple_hash = hashlib.sha256(provided_password.encode()).hexdigest()
-        if simple_hash.lower() == stored_hex.lower():
+        if (simple_hash.lower() == stored_hex.lower()):
             return True
             
         # If that doesn't work, try with the static salt from the 'users' dictionary
         static_salt = salt  # Use the global salt variable defined above
         test_hash = hashlib.pbkdf2_hmac('sha256', provided_password.encode(), static_salt, 100000)
         test_hex = (static_salt + test_hash).hex()
-        if test_hex.lower() == stored_hex.lower():
+        if (test_hex.lower() == stored_hex.lower()):
             return True
             
         # As a last resort, try a hard-coded comparison for admin001/admin123
-        if stored_hex == '263BF9C89AED4EC51E1117C81EF7E1EE72DCB3B192255506A2E3F50D083A3F6F' and provided_password == 'admin123':
+        if (stored_hex == '263BF9C89AED4EC51E1117C81EF7E1EE72DCB3B192255506A2E3F50D083A3F6F' and provided_password == 'admin123'):
             return True
             
         return False
@@ -1336,6 +1640,38 @@ def serve_static_image(filename):
 
 # Initialize image directory on startup
 setup_image_directory()
+
+@app.route('/api/download_acceptance_letter/<leave_id>')
+def download_acceptance_letter(leave_id):
+    try:
+        conn = sqlite3.connect('leave_portal.db')
+        c = conn.cursor()
+        
+        # Get the acceptance letter filename
+        c.execute('SELECT acceptance_letter FROM leave_applications WHERE id = ?', (leave_id,))
+        result = c.fetchone()
+        conn.close()
+        
+        if result and result[0]:
+            pdf_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'statics', 'pdfs')
+            return send_from_directory(
+                pdf_dir,
+                result[0],
+                as_attachment=True,
+                download_name=result[0]
+            )
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Acceptance letter not found'
+            }), 404
+
+    except Exception as e:
+        print(f"❌ Error downloading acceptance letter: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
     setup_directories()
