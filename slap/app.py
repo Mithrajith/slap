@@ -1562,7 +1562,8 @@ def approved_leave():
         
         c.execute('''
             SELECT id, student_name, reg_no, department, year, 
-                   from_date, to_date, reason, total_days, category, status
+                   from_date, to_date, reason, total_days, category, status,
+                   created_at
             FROM leave_applications 
             WHERE reg_no = ? AND status = 'approved'
             ORDER BY created_at DESC
@@ -1584,6 +1585,7 @@ def approved_leave():
             'totalLeaveDays': leave[8],
             'category': leave[9],
             'status': leave[10],
+            'createdAt': leave[11],  # Add creation date
             'photo': get_student_image(leave[2])
         } for leave in approved_leaves]
         
